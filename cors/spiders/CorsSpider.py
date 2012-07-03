@@ -34,14 +34,9 @@ class CorsSpider(CrawlSpider):
         prereq      = module_obj.select("tr[8]/td[2]/text()").extract()
         preclu      = module_obj.select("tr[9]/td[2]/text()").extract()
         workload    = module_obj.select("tr[10]/td[2]/text()").extract()
-        
-        # Create an array of lectures and tutorials
-        lectures  = lecture_obj.select("tr[2]/td/div/table/tr[position()>1]")
-        tutorials = tutorial_obj.select("tr[3]/td/div/table/tr[position()>1]")
-        
-        slots = []
-        slots.extend(self._splitClasses(lectures))
-        slots.extend(self._splitClasses(tutorials))
+
+        lectures  = lecture_obj.select("tr[2]/td/div/table/tr/td/text()").extract()
+        tutorials = tutorial_obj.select("tr[3]/td/div/table/tr/td/text()").extract()
         
         # Reformat the exam date to ISO8601
         exam = exam[0].strip() if exam else u'null'
@@ -59,7 +54,8 @@ class CorsSpider(CrawlSpider):
         module['name']      = name[0].strip() if name else None
         module['desc']      = desc[0]
         module['mc']        = mc[0].strip() if mc else None
-        module['slots']     = slots
+        module['lectures']  = lectures
+        module['tutorials'] = tutorials
         module['exam_date'] = exam_date
         module['exam_time'] = exam_time
         module['prereq']    = prereq[0]
@@ -88,38 +84,3 @@ class CorsSpider(CrawlSpider):
     		
     	except IndexError:
     		return exam
-    
-    def _splitClasses(self, classes):
-        """
-        Takes in an XPath object containing the class slot and returns a list
-        of dicts of the slot information.
-        """
-        
-        slots = []
-        
-        for l in classes:
-            code       = l.select("td[1]/text()").extract()
-            slot_type  = l.select("td[2]/text()").extract()
-            occurrence = l.select("td[3]/text()").extract()
-            day        = l.select("td[4]/text()").extract()
-            starttime  = l.select("td[5]/text()").extract()
-            endtime    = l.select("td[6]/text()").extract()
-            location   = l.select("td[7]/text()").extract()
-            
-            # Bug fix for lecturers that like to list a null lecture as a lecture slot
-            if ' '.join(occurrence[0].split()) == 'There are no lectures for this module.':
-                return []
-            
-            # Create the dict
-            slots.append({
-                "code"      : code[0] if code else None,
-                "type"      : slot_type[0] if slot_type else None,
-                "occurrence": occurrence[0] if occurrence else None,
-                "day"       : day[0] if day else None,
-                "starttime" : starttime[0] if starttime else None,
-                "endtime"   : endtime[0] if endtime else None,
-                "location"  : location[0] if location else None
-            })
-        
-        return slots
-    

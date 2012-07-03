@@ -11,4 +11,5 @@ class ModuleItem(Item):
 	prereq    = Field()
 	preclu    = Field()
 	workload  = Field()
-	slots     = Field()
+	lectures  = Field()
+	tutorials = Field()

@@ -17,7 +17,7 @@ class MySQLStorePipeline(object):
             cursorclass = MySQLdb.cursors.DictCursor,
             charset     = 'utf8', use_unicode=True
         )
-    
+
     def process_item(self, item, spider):
         """Insert the item to the database, handle the errors if it fails"""
         
@@ -44,9 +44,9 @@ class MySQLStorePipeline(object):
         for code in codes:
             # Insert an entry in the module table
             tx.execute(
-                "INSERT INTO modules (code, name, description, workload, mc,"
+                "insert into modules (code, name, description, workload, mc,"
                 "prerequisite, preclusion, examdate, examtime) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)", (
+                "values (%s, %s, %s, %s, %s, %s, %s, %s, %s)", (
                     code, item['name'], item['desc'], item['workload'],
                     item['mc'], item['prereq'], item['preclu'],
                     item['exam_date'], item['exam_time']
@@ -55,37 +55,44 @@ class MySQLStorePipeline(object):
             
             # Get the row id of the current module inserted
             module_id = tx.lastrowid
+            slot_re_obj = re.compile('.+\[(?P<slotcode>.+)\]$')
             
             # Insert lecture slots into the database
-            if item['slots']:
-                for slot in item['slots']:
-                    q = tx.execute("SELECT id FROM slot_types WHERE name='%s'" % slot['type'])
+            if item['lectures']:
+                for lecture in item['lectures']:
+                    slot_re = slot_re_obj.match(lecture['name'])
+                    slot_code = slot_re.group('slotcode')
                     
-                    # Get the slot type id
-                    if not q:
-                        # Insert a new slot type
-                        tx.execute("INSERT INTO slot_types(name) VALUES ('%s')" % slot['type'])
-                        slot_type_id = tx.lastrowid
-                    else:
-                        slot_type_id = q
+                    for session in lecture['sessions']:
+                        tx.execute(
+                            "insert into slots (code, module_id, starttime, "
+                            "endtime, day, slot_type_id, location, occurrence)"
+                            "values (%s, %s, %s, %s, %s, %s, %s, %s)", (
+                                slot_code, module_id, session['starttime'],
+                                session['endtime'], session['day'], 1,
+                                session['location'], session['occurrence']
+                            ) # slot type = 1 = lectures
+                        )
+            
+            # Insert tutorial slots into the database
+            if item['tutorials']:
+                for tutorial in item['tutorials']:
+                    slot_re = slot_re_obj.match(tutorial['name'])
+                    slot_code = slot_re.group('slotcode')
                     
-                    tx.execute(self._generateSlotQueryString(slot, module_id, slot_type_id))
+                    for session in tutorial['sessions']:
+                        tx.execute(
+                            "insert into slots (code, module_id, starttime,"
+                            "endtime, day, slot_type_id, location, occurrence)"
+                            "values (%s, %s, %s, %s, %s, %s, %s, %s)", (
+                                slot_code, module_id, session['starttime'],
+                                session['endtime'], session['day'], 2,
+                                session['location'], session['occurrence']
+                            ) # slot_type_id = 2 = tutorials
+                        )
             
             # Database transaction complete!
             log.msg("Item stored in db: %s" % item, level=log.DEBUG)
-    
-    def _generateSlotQueryString(self, slot, module_id, slot_type_id):
-        """Generates the slot insertion query string."""
-        query = (
-            "INSERT INTO slots(code, module_id, starttime, endtime, day, "
-            "slot_type_id, location, occurrence) "
-            "VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')" % (
-                slot['code'], module_id, slot['starttime'], slot['endtime'],
-                slot['day'], slot_type_id, slot['location'], slot['occurrence']
-            )
-        )
-        
-        return query
     
     def handle_error(self, e):
         """Handles any errors in the database query."""
