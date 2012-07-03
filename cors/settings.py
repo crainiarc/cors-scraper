@@ -21,6 +21,6 @@ ITEM_PIPELINES = [
 ]
 
 MYSQL_HOST  = "localhost"
-MYSQL_USER  = "user"
-MYSQL_PASS  = "password"
-MYSQL_DB    = "database"
+MYSQL_USER  = "twf_user"
+MYSQL_PASS  = "Cr2E1o3h79ynF8w"
+MYSQL_DB    = "twf_db"
