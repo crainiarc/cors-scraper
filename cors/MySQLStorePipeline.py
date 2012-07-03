@@ -59,15 +59,16 @@ class MySQLStorePipeline(object):
             # Insert lecture slots into the database
             if item['slots']:
                 for slot in item['slots']:
-                    q = tx.execute("SELECT id FROM slot_types WHERE name='%s'" % slot['type'])
+                    tx.execute("SELECT id, name FROM slot_types WHERE name='%s'" % slot['type'])
                     
                     # Get the slot type id
-                    if not q:
+                    q = tx.fetchone()
+                    if q == None:
                         # Insert a new slot type
                         tx.execute("INSERT INTO slot_types(name) VALUES ('%s')" % slot['type'])
                         slot_type_id = tx.lastrowid
                     else:
-                        slot_type_id = q
+                        slot_type_id = q['id']
                     
                     tx.execute(self._generateSlotQueryString(slot, module_id, slot_type_id))
             
